@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, AlertCircle, CloudRain, Zap } from 'lucide-react';
-
+import { react } from "@"
 export const StatCard = ({ label, value, icon: Icon, trend, colorClass }) => (
-  <motion.div 
+  <motion.div
     whileHover={{ y: -5 }}
     className="glass p-6 rounded-[2rem] border-[var(--glass-border)] relative overflow-hidden group"
   >
@@ -32,10 +32,10 @@ export const AiAssistant = () => {
         <Sparkles size={20} className="text-indigo-400" />
         <h2 className="text-xl font-bold tracking-tight">AI Insights</h2>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {insights.length > 0 ? insights.map((insight, idx) => (
-          <motion.div 
+          <motion.div
             key={idx}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
