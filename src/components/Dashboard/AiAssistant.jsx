@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, AlertCircle, CloudRain, Zap } from 'lucide-react';
-import { react } from "@"
+
 export const StatCard = ({ label, value, icon: Icon, trend, colorClass }) => (
   <motion.div
     whileHover={{ y: -5 }}
