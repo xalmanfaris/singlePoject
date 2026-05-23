@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #6366f1;
+  --color-secondary: #a855f7;
+  --color-accent: #ec4899;
+}
+
+:root {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --bg-main: #0c0c0f; /* Slightly lighter deep dark */
+  --text-main: #ffffff;
+  --text-muted: #9ca3af;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: rgba(0, 0, 0, 0.6);
+  --grid-color: rgba(255, 255, 255, 0.02);
+  --mesh-opacity: 0.35;
+}
+
+[data-theme='light'] {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --bg-main: #f1f5f9; /* Distinct slate-white for contrast */
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(99, 102, 241, 0.1);
+  --glass-shadow: rgba(0, 0, 0, 0.03);
+  --grid-color: rgba(0, 0, 0, 0.04);
+  --mesh-opacity: 0.2;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    @apply antialiased selection:bg-indigo-500/30 transition-colors duration-500;
+    font-family: var(--font-sans);
+  }
+
+  /* Fluid Typography Headers */
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 6rem);
+  }
+  h2 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+  }
+}
+
+@layer utilities {
+  .glass {
+    background-color: var(--glass-bg);
+    @apply backdrop-blur-2xl border transition-all duration-500 shadow-xl;
+    border-color: var(--glass-border);
+    box-shadow: 0 10px 30px -10px var(--glass-shadow);
+  }
+  
+  .glass-dark {
+    background-color: var(--glass-bg);
+    @apply backdrop-blur-3xl border transition-all duration-500 shadow-2xl;
+    border-color: var(--glass-border);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 via-violet-600 to-rose-500;
+  }
+
+  .text-logo {
+    @apply tracking-[-0.04em] font-black italic;
+    color: var(--text-main);
+  }
+
+  .bg-grid {
+    background-size: 60px 60px;
+    background-image: 
+      linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  }
+
+  .mesh-bg {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mesh-bg::before {
+    content: "";
+    @apply absolute inset-0 -z-10 blur-[100px] animate-pulse transition-opacity duration-700;
+    opacity: var(--mesh-opacity);
+    background: 
+      radial-gradient(circle at 0% 0%, #4f46e5 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, #db2777 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, #7c3aed 0%, transparent 50%);
+  }
+
+  .grain::after {
+    content: "";
+    @apply absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay;
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    z-index: 50;
+  }
+
+  .perspective-2000 {
+    perspective: 2000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .sidebar-gradient {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  }
+
+  .card-gradient-blue {
+    background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent);
+  }
+
+  .card-gradient-purple {
+    background: radial-gradient(circle at top right, rgba(168, 85, 247, 0.15), transparent);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  @apply bg-indigo-500/30;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-indigo-500/20 rounded-full hover:bg-indigo-500/40 transition-colors;
+}
+
+/* Phone Input Overrides */
+.phone-input-container .react-tel-input .form-control {
+  font-family: inherit !important;
+}
+
+.dark-phone-input .selected-flag:hover,
+.dark-phone-input .selected-flag.open {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.light-phone-input .selected-flag:hover,
+.light-phone-input .selected-flag.open {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.react-tel-input .country-list {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
+  padding: 10px !important;
+  margin-top: 10px !important;
+}
+
+.react-tel-input .country-list .country:hover {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+.react-tel-input .country-list .country.highlight {
+  background-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+.react-tel-input .country-list .search {
+  padding: 10px !important;
+  background-color: transparent !important;
+}
+
+.react-tel-input .country-list .search-box {
+  width: 90% !important;
+  margin-left: 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--glass-border) !important;
+  background-color: rgba(128, 128, 128, 0.1) !important;
+  color: var(--text-main) !important;
+  padding: 8px !important;
+}
