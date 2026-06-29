@@ -1,4 +1,4 @@
-const BASE_URL = 'http://172.16.1.48:5042/api';
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}/api`;
 
 const fetchWithTimeout = async (resource, options = {}) => {
     const { timeout = 10000 } = options;
@@ -148,3 +148,25 @@ export const getOverviewStats = async (token) => {
     return response.json();
 };
 
+export const sendGlobalBroadcast = async (message, type, token) => {
+    const response = await fetchWithTimeout(`${BASE_URL}/Admin/global-broadcast`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message, type })
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to send global broadcast';
+        try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.message || errorMessage;
+        } catch {
+            errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+    }
+    return response.json();
+};

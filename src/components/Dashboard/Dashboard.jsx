@@ -166,7 +166,7 @@ const Dashboard = ({ theme, toggleTheme }) => {
     if (!userId) return;
 
     const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl("http://172.16.1.48:5042/notificationHub", {
+      .withUrl(`${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}/notificationHub`, {
         skipNegotiation: true,
         transport: signalR.HttpTransportType.WebSockets
       })

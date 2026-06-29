@@ -1,4 +1,4 @@
-const BASE_URL = 'http://172.16.1.48:5042/api';
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}/api`;
 
 const fetchWithTimeout = async (resource, options = {}) => {
     const { timeout = 10000 } = options;

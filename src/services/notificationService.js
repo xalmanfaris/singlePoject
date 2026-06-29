@@ -1,6 +1,5 @@
 import { getCookie } from './cookieService';
-
-const BASE_URL = 'http://172.16.1.48:5042/api/Notification';
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}/api/Notification`;
 
 export const getNotifications = async () => {
     const userCookie = getCookie('user');

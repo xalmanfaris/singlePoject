@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getCookie, deleteCookie } from '../../services/cookieService';
-import { getAllUsers, toggleUserStatus as toggleStatusApi, toggleUserRole as toggleRoleApi, getAllTrips, getTripDetails, getAllLostItems, sendAdminManualNotification, getOverviewStats } from '../../services/adminService';
+import { getAllUsers, toggleUserStatus as toggleStatusApi, toggleUserRole as toggleRoleApi, getAllTrips, getTripDetails, getAllLostItems, sendAdminManualNotification, getOverviewStats, sendGlobalBroadcast } from '../../services/adminService';
 
 // Subcomponents for Admin Dashboard tabs
 const StatCard = ({ icon: Icon, title, value, change, changeType, detail, color = "indigo" }) => {
@@ -92,14 +92,11 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewError, setOverviewError] = useState(null);
   
-  // Broadcaster state
-  const [notificationPayload, setNotificationPayload] = useState({
-    title: '',
-    message: '',
-    type: 'system',
-    target: 'all'
-  });
-  const [broadcastStatus, setBroadcastStatus] = useState(null);
+  // Global Broadcaster state
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastType, setBroadcastType] = useState('SystemAlert');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
 
   // Database User DB Management
   const [usersList, setUsersList] = useState([]);
@@ -432,19 +429,29 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
     }
   };
 
-  const handleBroadcast = (e) => {
+  const handleGlobalBroadcast = async (e) => {
     e.preventDefault();
-    if (!notificationPayload.title || !notificationPayload.message) {
-      setBroadcastStatus({ type: 'error', message: 'Please provide both a Title and Message.' });
+    if (!broadcastMessage.trim()) {
+      setBroadcastResult({ type: 'error', message: 'Please enter a message to broadcast.' });
       return;
     }
-
-    setBroadcastStatus({ type: 'success', message: 'Global system notification successfully broadcasted!' });
-    setNotificationPayload({ title: '', message: '', type: 'system', target: 'all' });
-    
-    setTimeout(() => {
-      setBroadcastStatus(null);
-    }, 4000);
+    const userCookie = getCookie('user');
+    if (!userCookie || !userCookie.token) {
+      setBroadcastResult({ type: 'error', message: 'Not authenticated.' });
+      return;
+    }
+    setIsBroadcasting(true);
+    setBroadcastResult(null);
+    try {
+      const result = await sendGlobalBroadcast(broadcastMessage.trim(), broadcastType, userCookie.token);
+      setBroadcastResult({ type: 'success', message: result.message, sentCount: result.sentCount });
+      setBroadcastMessage('');
+      setTimeout(() => setBroadcastResult(null), 6000);
+    } catch (err) {
+      setBroadcastResult({ type: 'error', message: err.message || 'Broadcast failed.' });
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   const handleResolveItem = (id) => {
@@ -704,88 +711,106 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
 
                   {/* Middle Section: Broadcaster and Logs */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Broadcast Notification System */}
-                    <div className="bg-white dark:bg-white/[0.01] rounded-[2rem] p-6 lg:col-span-1 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none">
-                      <div className="flex items-center gap-3 mb-6">
+                    {/* Global Announce Broadcaster */}
+                    <div className="bg-white dark:bg-white/[0.01] rounded-[2rem] p-6 lg:col-span-1 border border-slate-200 dark:border-white/5 shadow-sm dark:shadow-none flex flex-col">
+                      <div className="flex items-center gap-3 mb-5">
                         <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20 text-rose-500">
-                          <Bell className="w-5 h-5" />
+                          <Globe className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="font-black tracking-tight text-slate-800 dark:text-white">System Broadcaster</h3>
-                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Announce globally in real-time</p>
+                          <h3 className="font-black tracking-tight text-slate-800 dark:text-white">Global Announce</h3>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Broadcast to all users in real-time</p>
                         </div>
                       </div>
 
-                      {broadcastStatus && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className={`p-4 rounded-2xl mb-4 text-xs font-bold border ${
-                            broadcastStatus.type === 'success'
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-                          }`}
-                        >
-                          {broadcastStatus.message}
-                        </motion.div>
-                      )}
+                      {/* Live DB stats context */}
+                      <div className="grid grid-cols-3 gap-2 mb-5">
+                        <div className="p-3 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 text-center">
+                          <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">
+                            {overviewStats ? overviewStats.totalUsers : '—'}
+                          </div>
+                          <div className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 mt-0.5">Total Users</div>
+                        </div>
+                        <div className="p-3 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 text-center">
+                          <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                            {overviewStats ? overviewStats.inProgressTrips : '—'}
+                          </div>
+                          <div className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 mt-0.5">Live Trips</div>
+                        </div>
+                        <div className="p-3 bg-slate-50 dark:bg-white/[0.03] rounded-2xl border border-slate-100 dark:border-white/5 text-center">
+                          <div className="text-lg font-black text-amber-600 dark:text-amber-400">
+                            {overviewStats ? overviewStats.totalNotifications : '—'}
+                          </div>
+                          <div className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 mt-0.5">Alerts Sent</div>
+                        </div>
+                      </div>
 
-                      <form onSubmit={handleBroadcast} className="space-y-4">
+                      {/* Feedback */}
+                      <AnimatePresence>
+                        {broadcastResult && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            className={`p-4 rounded-2xl mb-4 text-xs font-bold border ${
+                              broadcastResult.type === 'success'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                            }`}
+                          >
+                            {broadcastResult.type === 'success' && (
+                              <span className="flex items-center gap-2">
+                                <Check className="w-3.5 h-3.5" />
+                                {broadcastResult.message}
+                              </span>
+                            )}
+                            {broadcastResult.type === 'error' && (
+                              <span className="flex items-center gap-2">
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                {broadcastResult.message}
+                              </span>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <form onSubmit={handleGlobalBroadcast} className="space-y-4 flex-1 flex flex-col">
                         <div>
-                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">Alert Title</label>
-                          <input
-                            type="text"
-                            value={notificationPayload.title}
-                            onChange={(e) => setNotificationPayload(prev => ({ ...prev, title: e.target.value }))}
-                            placeholder="e.g. Scheduled Maintenance"
-                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:border-rose-500/50 transition-all text-sm font-medium text-slate-800 dark:text-white"
-                          />
+                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">Alert Type</label>
+                          <select
+                            value={broadcastType}
+                            onChange={(e) => setBroadcastType(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 outline-none focus:border-rose-500/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-300"
+                          >
+                            <option value="SystemAlert" className="bg-white dark:bg-[#09090b]">🔔 System Alert</option>
+                            <option value="TripStart" className="bg-white dark:bg-[#09090b]">✈️ Trip Update</option>
+                            <option value="Maintenance" className="bg-white dark:bg-[#09090b]">🔧 Maintenance</option>
+                            <option value="Promo" className="bg-white dark:bg-[#09090b]">🎉 Campaign / Promo</option>
+                            <option value="Security" className="bg-white dark:bg-[#09090b]">🛡️ Security Warning</option>
+                          </select>
                         </div>
 
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">Message Body</label>
+                        <div className="flex-1">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1.5">Message</label>
                           <textarea
-                            value={notificationPayload.message}
-                            onChange={(e) => setNotificationPayload(prev => ({ ...prev, message: e.target.value }))}
-                            rows="4"
-                            placeholder="Type the message details..."
-                            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:border-rose-500/50 transition-all text-sm font-medium text-slate-800 dark:text-white resize-none"
+                            value={broadcastMessage}
+                            onChange={(e) => setBroadcastMessage(e.target.value)}
+                            rows="5"
+                            placeholder="Type your announcement message here..."
+                            className="w-full h-full min-h-[110px] bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 outline-none focus:border-rose-500/50 transition-all text-sm font-medium text-slate-800 dark:text-white resize-none"
                           />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">Alert Type</label>
-                            <select
-                               value={notificationPayload.type}
-                               onChange={(e) => setNotificationPayload(prev => ({ ...prev, type: e.target.value }))}
-                               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-3 outline-none focus:border-rose-500/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-300"
-                            >
-                              <option value="system" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">System Alert</option>
-                              <option value="promo" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">Campaign</option>
-                              <option value="security" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">Security Warning</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">Target Audience</label>
-                            <select
-                               value={notificationPayload.target}
-                               onChange={(e) => setNotificationPayload(prev => ({ ...prev, target: e.target.value }))}
-                               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-3 outline-none focus:border-rose-500/50 transition-all text-xs font-bold text-slate-700 dark:text-slate-300"
-                            >
-                              <option value="all" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">All Users</option>
-                              <option value="active" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">Active Only</option>
-                              <option value="admins" className="bg-white dark:bg-[#09090b] text-slate-800 dark:text-white">Admins Only</option>
-                            </select>
-                          </div>
                         </div>
 
                         <button
                           type="submit"
-                          className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 active:scale-98 transition-all mt-4 cursor-pointer"
+                          disabled={isBroadcasting || !broadcastMessage.trim()}
+                          className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20 active:scale-95 transition-all cursor-pointer"
                         >
-                          <Send size={15} />
-                          Broadcast System Alert
+                          {isBroadcasting ? (
+                            <><RefreshCw size={14} className="animate-spin" /> Broadcasting...</>
+                          ) : (
+                            <><Send size={14} /> Broadcast to All Users</>
+                          )}
                         </button>
                       </form>
                     </div>
@@ -950,7 +975,7 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
                                     <div className="flex items-center gap-3">
                                       {user.profileImageUrl ? (
                                         <img 
-                                          src={user.profileImageUrl.startsWith('http') ? user.profileImageUrl : `http://172.16.1.48:5042${user.profileImageUrl}`} 
+                                          src={user.profileImageUrl.startsWith('http') ? user.profileImageUrl : `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}${user.profileImageUrl}`} 
                                           alt={user.fullName} 
                                           className="w-9 h-9 rounded-lg object-cover border border-slate-200 dark:border-white/10 shadow-sm" 
                                         />
@@ -1143,7 +1168,7 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
                         <div className="absolute top-0 right-0 w-56 h-56 bg-white/[0.03] blur-2xl rounded-full -mr-16 -mt-16 pointer-events-none" />
                         {selectedLostItemsUser.profileImageUrl ? (
                           <img
-                            src={selectedLostItemsUser.profileImageUrl.startsWith('http') ? selectedLostItemsUser.profileImageUrl : `http://172.16.1.48:5042${selectedLostItemsUser.profileImageUrl}`}
+                            src={selectedLostItemsUser.profileImageUrl.startsWith('http') ? selectedLostItemsUser.profileImageUrl : `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}${selectedLostItemsUser.profileImageUrl}`}
                             alt={selectedLostItemsUser.userFullName}
                             className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20 shadow-lg shrink-0"
                           />
@@ -1284,7 +1309,7 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
                                   <div className="flex items-center gap-3 mb-4">
                                     {u.profileImageUrl ? (
                                       <img
-                                        src={u.profileImageUrl.startsWith('http') ? u.profileImageUrl : `http://172.16.1.48:5042${u.profileImageUrl}`}
+                                        src={u.profileImageUrl.startsWith('http') ? u.profileImageUrl : `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}${u.profileImageUrl}`}
                                         alt={u.userFullName}
                                         className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-white/10 shadow-sm shrink-0"
                                       />
@@ -1667,7 +1692,7 @@ const AdminDashboard = ({ theme, toggleTheme }) => {
                         <div className="bg-white dark:bg-[#09090b]/80 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 flex items-center gap-4 shadow-sm">
                           {selectedDetailedTrip?.user?.profileImageUrl ? (
                             <img
-                              src={selectedDetailedTrip?.user?.profileImageUrl?.startsWith('http') ? selectedDetailedTrip.user.profileImageUrl : `http://172.16.1.48:5042${selectedDetailedTrip?.user?.profileImageUrl || ''}`}
+                              src={selectedDetailedTrip?.user?.profileImageUrl?.startsWith('http') ? selectedDetailedTrip.user.profileImageUrl : `${import.meta.env.VITE_API_BASE_URL || 'https://yugo-g2fmdcdefuc5ewba.southeastasia-01.azurewebsites.net'}${selectedDetailedTrip?.user?.profileImageUrl || ''}`}
                               alt={selectedDetailedTrip?.user?.fullName || 'Traveler'}
                               className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-white/10 shadow-md"
                             />
